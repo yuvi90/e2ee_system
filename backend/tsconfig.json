@@ -1,0 +1,131 @@
+{
+  "compilerOptions": {
+    // -------------------------
+    // Base JS output behavior
+    // -------------------------
+
+    "target": "es2020",
+    // TS outputs modern JS (async/await, optional chaining). Good default.
+
+    "module": "commonjs",
+    // -------------------------
+    // MODULE (WHAT JS YOU OUTPUT)
+    //
+    // "commonjs"      → Standard Node.js format (require/module.exports).
+    //                    Best for 95% of backend projects. Works with ts-node,
+    //                    nodemon, Express everything.
+    //
+    // "esnext"        → Output ESM (import/export) but TypeScript doesn't care
+    //                    about Node's strict ESM rules. Usually paired with
+    //                    moduleResolution: "bundler".
+    //
+    // "nodenext"      → Output format depends on file extensions (.ts/.mts/.cts).
+    //                    Strict ESM rules. Requires .js extensions. Causes import
+    //                    headaches. Only needed if you're intentionally building
+    //                    a REAL Node ESM project or publishing an NPM library.
+    //
+    // "node16"        → Same behavior as NodeNext but older naming.
+    //
+    // TL;DR:
+    // - If you're building a backend → use "commonjs".
+    // - If you want modern ESM with no pain → use "esnext" + "bundler".
+    // - If you're building a strict ESM library → use "nodenext".
+    // -------------------------
+
+    "moduleResolution": "node",
+    // -------------------------
+    // MODULE RESOLUTION (HOW IMPORTS ARE FOUND)
+    //
+    // "node" (Node10) → Classic Node.js resolution. Allows extensionless imports
+    //                   like "./config/myfile". Perfect for ts-node + CommonJS.
+    //
+    // "bundler"       → Best developer experience. Mimics Vite/Next/Rollup.
+    //                   No extension requirements. Works with import/export
+    //                   cleanly. Great for TypeScript projects NOT using strict
+    //                   Node runtime ESM rules. Highly recommended for TS apps.
+    //
+    // "node16"        → Resolution based on Node.js ESM rules:
+    //                   - Requires ".js" in imports.
+    //                   - No extensionless imports.
+    //                   - Follows "exports"/"imports" in package.json.
+    //                   Painful without a full ESM setup.
+    //
+    // "nodenext"      → Same as node16 but smarter: handles .mts/.cts/.ts.
+    //                   Still strict ESM, still requires extensions.
+    //
+    // "classic"       → Prehistoric TS behavior. Never use.
+    //
+    // TL;DR:
+    // - If using "commonjs" → use "node".
+    // - If using "esnext"   → use "bundler" (modern, easy).
+    // - If using "nodenext" → you MUST use "node16"/"nodenext", but expect pain.
+    // -------------------------
+
+    "esModuleInterop": true,
+    // It tells TypeScript to generate import/export syntax for CommonJS modules. Not strictly necessary with NodeNext.
+
+    "rootDir": "./src",
+    // Where TS looks for source code.
+
+    "outDir": "./dist",
+    // Where compiled JS goes.
+
+    // -------------------------
+    // Rules & Compiler Behavior
+    // -------------------------
+
+    "sourceMap": true,
+    // Generate .map files for debugging. Useful in dev.
+
+    "strict": true,
+    // Enables ALL strict TypeScript checks. Good. Professional default.
+
+    "skipLibCheck": true,
+    // Don’t type-check node_modules. Saves time. Always keep enabled.
+
+    "noEmitOnError": true,
+    // If TS finds errors → don't emit JS. Avoids bad builds.
+
+    "strictNullChecks": true,
+    // Makes null/undefined real types. Good. Prevents stupid bugs.
+
+    "noImplicitAny": false,
+    // Disallow variables without explicit types. Good for quality.
+
+    "noUnusedLocals": false,
+    // Warns about unused variables. Helps catch dead code.
+
+    "noUncheckedIndexedAccess": false,
+    // Makes arr[i] return T | undefined. Extra safety, extra noise.
+
+    "exactOptionalPropertyTypes": false,
+    // Makes foo?: string *not* accept undefined unless explicitly allowed.
+    // Very strict. Good only if you understand optional semantics deeply.
+
+    "allowJs": true,
+    // Allow .js files in src/. Usually pointless unless you mix JS + TS.
+
+    "resolveJsonModule": true,
+    // Allows: import data from './file.json'. Useful.
+
+    "isolatedModules": true,
+    // Forces each file to be treated as isolated.
+    // Required by ts-node, SWC, Vite, etc. Mostly harmless.
+
+    "forceConsistentCasingInFileNames": true,
+    // Prevents case-sensitive import bugs on Linux servers.
+
+    "removeComments": true
+    // Removes comments in compiled dist/. Doesn't affect dev experience.
+  },
+
+  // -------------------------
+  // File includes & excludes
+  // -------------------------
+
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"],
+  // All source code to compile.
+
+  "exclude": ["node_modules", "dist", "src/tests"]
+  // Files TS should ignore.
+}

@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/db/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  publicKey     String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  files         File[]
+  sharedFiles   FileAccess[]   @relation("SharedWithUser")
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model File {
+  id                   String   @id @default(cuid())
+  ownerId              Int
+  filename             String
+  originalSize         Int
+  encryptedFilePath    String
+  encryptedKeyForOwner String
+  iv                   String
+  integrityHash        String
+  mimeType             String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sharedAccess FileAccess[]
+
+  @@map("files")
+}
+
+model FileAccess {
+  id           Int      @id @default(autoincrement())
+  fileId       String
+  sharedWithId Int
+  encryptedKey String
+  createdAt    DateTime @default(now())
+
+  file       File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  sharedWith User @relation("SharedWithUser", fields: [sharedWithId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, sharedWithId])
+  @@map("file_access")
+}

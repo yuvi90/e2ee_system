@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-brand-dark: #151922;
+  --color-brand-card: #1a202c;
+  --color-brand-blue: #3b82f6;
+  --color-brand-accent: #2563eb;
+}
+
+body {
+  background-color: #151922;
+  color: #fff;
+}
