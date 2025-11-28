@@ -11,24 +11,45 @@ import {
 import { useAuth } from "../../shared/hooks/useAuth";
 import { cn } from "../../shared/utils/helpers";
 
-export const Sidebar: React.FC = () => {
-  const { logout } = useAuth();
+interface SidebarProps {
+  activeTab?: "my-files" | "shared-with-me";
+  onTabChange?: (tab: "my-files" | "shared-with-me") => void;
+}
 
-  // Get user data from localStorage for now
-  const accessToken = localStorage.getItem("accessToken");
-  let user = null;
-  if (accessToken) {
-    try {
-      const payload = JSON.parse(atob(accessToken.split(".")[1]));
-      user = { name: payload.name || "User", email: payload.email };
-    } catch {
-      user = { name: "User", email: "user@example.com" };
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab = "my-files",
+  onTabChange,
+}) => {
+  const { logout, user } = useAuth();
+
+  // Helper function to get user initials
+  const getUserInitials = (name: string): string => {
+    if (!name) return "U";
+
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+      return words[0].charAt(0).toUpperCase();
     }
-  }
+
+    // Take first letter of first and last word
+    return (
+      words[0].charAt(0) + words[words.length - 1].charAt(0)
+    ).toUpperCase();
+  };
 
   const navItems = [
-    { icon: FolderClosed, label: "My Files", active: true },
-    { icon: Users, label: "Shared with Me", active: false },
+    {
+      icon: FolderClosed,
+      label: "My Files",
+      active: activeTab === "my-files",
+      onClick: () => onTabChange?.("my-files"),
+    },
+    {
+      icon: Users,
+      label: "Shared with Me",
+      active: activeTab === "shared-with-me",
+      onClick: () => onTabChange?.("shared-with-me"),
+    },
     { icon: Settings, label: "Settings", active: false },
   ];
 
@@ -57,6 +78,7 @@ export const Sidebar: React.FC = () => {
         {navItems.map((item) => (
           <button
             key={item.label}
+            onClick={item.onClick}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all",
               item.active
@@ -77,8 +99,8 @@ export const Sidebar: React.FC = () => {
 
       <div className="p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-4 px-2">
-          <div className="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center text-orange-700 font-bold">
-            {user?.name?.charAt(0) || "J"}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+            {user?.name ? getUserInitials(user.name) : "U"}
           </div>
           <div className="overflow-hidden">
             <p className="text-sm font-medium text-white truncate">

@@ -56,7 +56,7 @@ export class AuthService {
         },
       });
 
-      const tokens = await this.generateTokens(user.id, user.email);
+      const tokens = await this.generateTokens(user.id, user.email, user.name);
       return {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -83,7 +83,7 @@ export class AuthService {
     const valid = await bcrypt.compare(data.password, user.passwordHash);
     if (!valid) throw { status: 401, message: "Invalid credentials" };
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.name);
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -99,12 +99,13 @@ export class AuthService {
 
   private async generateTokens(
     id: number,
-    email: string
+    email: string,
+    name: string
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const accessToken = jwt.sign({ id, email }, ENV.JWT_SECRET, {
+    const accessToken = jwt.sign({ id, email, name }, ENV.JWT_SECRET, {
       expiresIn: "15m",
     });
-    const refreshToken = jwt.sign({ id, email }, ENV.JWT_SECRET, {
+    const refreshToken = jwt.sign({ id, email, name }, ENV.JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -143,7 +144,8 @@ export class AuthService {
       // Generate new tokens
       const tokens = await this.generateTokens(
         storedToken.user.id,
-        storedToken.user.email
+        storedToken.user.email,
+        storedToken.user.name
       );
 
       return {

@@ -1,9 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileAPI } from "../api/fileApi";
 import type { UploadFileRequest } from "../api/fileApi";
 import { toast } from "../../../shared/utils/toast";
 
 export const useUploadFile = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       encryptedFile,
@@ -17,6 +19,10 @@ export const useUploadFile = () => {
     onSuccess: (data) => {
       toast.success("File uploaded successfully!");
       console.log("Upload success:", data);
+
+      // Invalidate files queries to refresh the files list
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["userFiles"] });
     },
     onError: (error) => {
       console.error("Upload error:", error);
@@ -42,10 +48,16 @@ export const useUploadConfig = () => {
 };
 
 export const useDeleteFile = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: FileAPI.deleteFile,
     onSuccess: () => {
       toast.success("File deleted successfully!");
+
+      // Invalidate files queries to refresh the files list
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["userFiles"] });
     },
     onError: () => {
       toast.error("Failed to delete file.");

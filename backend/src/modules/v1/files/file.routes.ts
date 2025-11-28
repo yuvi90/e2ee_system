@@ -52,6 +52,12 @@ router.get("/:id/metadata", fileController.getMetadata);
 // GET /api/v1/files/:id/download - Download encrypted file
 router.get("/:id/download", downloadRateLimit, fileController.download);
 
+// POST /api/v1/files/:id/share - Share file with another user
+router.post("/:id/share", fileController.share);
+
+// GET /api/v1/files/shared-with-me - Get files shared with current user
+router.get("/shared-with-me", fileController.getSharedFiles);
+
 // DELETE /api/v1/files/:id - Delete file
 router.delete("/:id", fileController.delete);
 

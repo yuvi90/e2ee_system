@@ -1,21 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { FileAPI } from "../modules/files/api/fileApi";
 
-export const useFiles = () => {
-  // Check if user is authenticated
+export const useSharedFiles = () => {
   const token = localStorage.getItem("accessToken");
-  console.log("useFiles - Current token:", token ? "exists" : "missing");
+  console.log("useSharedFiles - Current token:", token ? "exists" : "missing");
 
   return useQuery({
-    queryKey: ["files"],
+    queryKey: ["shared-files"],
     queryFn: async () => {
       try {
-        console.log("Starting files API request...");
-        const result = await FileAPI.getUserFiles();
-        console.log("Files API success:", result);
+        console.log("Starting shared files API request...");
+        const result = await FileAPI.getSharedFiles();
+        console.log("Shared files API success:", result);
         return result;
       } catch (error) {
-        console.error("Failed to load files:", error);
+        console.error("Failed to load shared files:", error);
         throw error;
       }
     },

@@ -10,6 +10,7 @@ export const corsOptions: CorsOptions = {
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["X-File-Metadata"], // Allow frontend to read custom headers
   credentials: true,
   optionsSuccessStatus: 200,
 };

@@ -129,6 +129,21 @@ const Login: React.FC = () => {
               />
             </div>
 
+            <div className="form-item">
+              <FormInput
+                name="passphrase"
+                register={register}
+                label="Encryption Passphrase"
+                type="password"
+                placeholder="*** Enter your encryption passphrase"
+                error={errors.passphrase}
+                showToggle
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Required to activate your encryption keys for file operations
+              </p>
+            </div>
+
             {error && (
               <div className="form-item text-red-500 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">
                 {(error as Error).message}

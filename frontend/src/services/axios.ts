@@ -12,10 +12,17 @@ export const AxiosInstance = axios.create({
 AxiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
+    console.log(
+      "Axios request interceptor - Token:",
+      token ? "exists" : "missing"
+    );
     if (token) {
-      AxiosInstance.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("Added Authorization header");
+    } else {
+      console.log(
+        "No token found, request will be sent without Authorization header"
+      );
     }
     return config;
   },

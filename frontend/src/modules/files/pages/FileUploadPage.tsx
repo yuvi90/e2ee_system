@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Upload,
   File,
@@ -7,17 +6,18 @@ import {
   AlertCircle,
   Loader2,
   X,
-  ArrowLeft,
   Shield,
   Lock,
   Key,
   Check,
   Download,
+  ArrowLeft,
 } from "lucide-react";
 import { encryptFileForOwnerUpload } from "../../../shared/utils/crypto";
 import { toast } from "../../../shared/utils/toast";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import { useUploadFile } from "../hooks/useFiles";
+import { useNavigate } from "react-router-dom";
 
 interface FileWithPreview extends File {
   id: string;
@@ -35,14 +35,23 @@ interface FileUploadState {
 
 export const FileUploadPage: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const uploadMutation = useUploadFile();
+  const navigate = useNavigate();
   const [isDragActive, setIsDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
   const [uploadStates, setUploadStates] = useState<
     Record<string, FileUploadState>
   >({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset uploader function
+  const resetUploader = useCallback(() => {
+    setSelectedFiles([]);
+    setUploadStates({});
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   const MAX_FILES = 1;
@@ -179,37 +188,63 @@ export const FileUploadPage: React.FC = () => {
   };
 
   const uploadFile = async (file: FileWithPreview) => {
-    // For now, let's create a mock public key for the user if it doesn't exist
-    // This should be properly implemented in the auth system
-    const mockPublicKey = await crypto.subtle.generateKey(
-      {
-        name: "RSA-OAEP",
-        modulusLength: 4096,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-256",
-      },
-      true,
-      ["encrypt", "decrypt"]
-    );
+    // Check authentication first
+    if (!user?.email) {
+      updateFileState(file.id, {
+        status: "error",
+        progress: 0,
+        message: "User not authenticated",
+      });
+      return;
+    }
 
     try {
-      // Step 1: Start encryption
+      // Step 1: Get user's actual public key from server
       updateFileState(file.id, {
         status: "encrypting",
-        progress: 10,
+        progress: 5,
+        message: "Getting your encryption keys...",
+      });
+
+      const { authApi } = await import("../../auth/api/authApi");
+      const { importPublicKeyFromBase64 } = await import(
+        "../../../shared/utils/crypto"
+      );
+
+      // Get user's public key from server
+      const publicKeyData = await authApi.getUserPublicKey(user.email);
+      if (!publicKeyData.success || !publicKeyData.data.publicKey) {
+        throw new Error("Could not retrieve your encryption keys from server");
+      }
+
+      console.log(`🔑 Using REAL public key for ${user.email}:`, {
+        keyLength: publicKeyData.data.publicKey.length,
+        keyPreview: publicKeyData.data.publicKey.substring(0, 50) + "...",
+        userName: publicKeyData.data.name,
+      });
+
+      // Import the public key
+      const ownerPublicKey = await importPublicKeyFromBase64(
+        publicKeyData.data.publicKey
+      );
+
+      // Step 2: Start encryption
+      updateFileState(file.id, {
+        status: "encrypting",
+        progress: 20,
         message: "Initializing encryption...",
       });
 
-      // Step 2: Encrypt the file
+      // Step 3: Encrypt the file with user's actual public key
       updateFileState(file.id, {
         status: "encrypting",
-        progress: 30,
+        progress: 40,
         message: "Encrypting with AES-256-GCM...",
       });
 
       const encryptionResult = await encryptFileForOwnerUpload({
         file,
-        ownerPublicKey: mockPublicKey.publicKey,
+        ownerPublicKey: ownerPublicKey,
       });
 
       updateFileState(file.id, {
@@ -254,6 +289,12 @@ export const FileUploadPage: React.FC = () => {
         originalFile: file,
         downloadUrl: URL.createObjectURL(encryptionResult.encryptedFile),
       });
+
+      // Auto-reset uploader after successful upload with a delay for user feedback
+      // Users can also manually reset using the "Upload Another File" button
+      setTimeout(() => {
+        resetUploader();
+      }, 3000); // 3 second delay to show success message and action buttons
     } catch (error) {
       console.error("Upload error:", error);
       updateFileState(file.id, {
@@ -372,18 +413,24 @@ export const FileUploadPage: React.FC = () => {
     selectedFiles.some((file) => uploadStates[file.id]?.status === "idle");
 
   return (
-    <div className="min-h-screen bg-background pt-32 pb-20">
-      <div className="container mx-auto px-4 max-w-4xl">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Navigation Header */}
+      <div className="border-b border-slate-800/50 bg-background/50">
+        <div className="max-w-4xl mx-auto px-6 py-4">
           <button
             onClick={() => navigate("/dashboard")}
-            className="inline-flex items-center text-slate-400 hover:text-white mb-4 transition-colors cursor-pointer"
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </button>
+        </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
           <div className="text-center">
             <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-blue-500" />
@@ -511,7 +558,7 @@ export const FileUploadPage: React.FC = () => {
                   <div key={file.id} className="p-6">
                     <div className="flex items-start space-x-4">
                       {/* File Preview/Icon */}
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         {file.preview ? (
                           <img
                             src={file.preview}
@@ -560,7 +607,7 @@ export const FileUploadPage: React.FC = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex-shrink-0 flex items-center gap-1">
+                      <div className="shrink-0 flex items-center gap-1">
                         {state.status === "success" && (
                           <button
                             onClick={() => downloadAndDecryptFile(file.id)}
@@ -584,6 +631,28 @@ export const FileUploadPage: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Action buttons after successful upload */}
+            {selectedFiles.some(
+              (file) => uploadStates[file.id]?.status === "success"
+            ) && (
+              <div className="p-6 border-t border-slate-800 bg-slate-900/50">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={resetUploader}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-medium"
+                  >
+                    Upload Another File
+                  </button>
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    className="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors cursor-pointer font-medium"
+                  >
+                    View My Files
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

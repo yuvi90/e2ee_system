@@ -81,6 +81,29 @@ export const authApi = {
     return response.data;
   },
 
+  checkUserExists: async (
+    email: string
+  ): Promise<{ exists: boolean; hasKeys: boolean; message: string }> => {
+    const response = await AxiosInstance.post("/auth/check-user-exists", {
+      email,
+    });
+    return response.data;
+  },
+
+  getUserPublicKey: async (
+    email: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      email: string;
+      name: string;
+      publicKey: string;
+    };
+  }> => {
+    const response = await AxiosInstance.get(`/auth/user/${email}/public-key`);
+    return response.data;
+  },
+
   register: async (data: RegisterData): Promise<RegisterResponse> => {
     const response = await AxiosInstance.post("/auth/register", data);
     return response.data;

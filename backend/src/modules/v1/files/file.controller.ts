@@ -89,7 +89,11 @@ export class FileController {
 
   list = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
+    console.log("FileController.list called for user:", user.id);
+
     const files = await this.service.listUserFiles(user.id);
+    console.log("FileController.list found files:", files.length, files);
+
     res.status(200).json({
       success: true,
       data: files,
@@ -120,6 +124,10 @@ export class FileController {
     const fileId = req.params.id;
 
     try {
+      logger.info(
+        `Download request - User: ${user.email} (ID: ${user.id}), File: ${fileId}`
+      );
+
       const { stream, metadata } = await this.service.downloadFile(
         fileId,
         user.id
@@ -150,15 +158,68 @@ export class FileController {
     }
   });
 
+  share = asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    const fileId = req.params.id;
+    const { recipientEmail, encryptedKeyForRecipient } = req.body;
+
+    if (!recipientEmail || !encryptedKeyForRecipient) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipient email and encrypted key are required",
+      });
+    }
+
+    try {
+      const result = await this.service.shareFile(
+        fileId,
+        user.id,
+        recipientEmail,
+        encryptedKeyForRecipient
+      );
+      res.status(201).json(result);
+    } catch (error: any) {
+      const status = error.status || 500;
+      res.status(status).json({
+        success: false,
+        message: error.message || "Failed to share file",
+      });
+    }
+  });
+
+  getSharedFiles = asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    const sharedFiles = await this.service.getSharedFiles(user.id);
+    res.status(200).json({
+      success: true,
+      data: sharedFiles,
+    });
+  });
+
   delete = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
     const fileId = req.params.id;
 
+    logger.info(
+      `DELETE request received - fileId: ${fileId}, userId: ${user?.id}`
+    );
+
+    if (!fileId) {
+      return res.status(400).json({
+        success: false,
+        message: "File ID is required",
+      });
+    }
+
     try {
-      const result = await this.service.deleteFile(fileId, user.id);
-      res.status(200).json(result);
+      await this.service.deleteFile(fileId, user.id);
+      res.status(200).json({
+        success: true,
+        message: "File deleted successfully",
+      });
     } catch (error: any) {
       const status = error.status || 500;
+      logger.error(`Delete file error: ${error.message}`, error);
       res.status(status).json({
         success: false,
         message: error.message || "Failed to delete file",

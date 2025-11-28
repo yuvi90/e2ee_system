@@ -78,7 +78,32 @@ export const useLogin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: LoginFormData) => authApi.login(data),
+    mutationFn: async (data: LoginFormData) => {
+      console.log("Login: Starting login process for", data.email);
+      console.log("Login: Has passphrase", !!data.passphrase);
+
+      // First, attempt regular login
+      const loginResponse = await authApi.login({
+        email: data.email,
+        password: data.password,
+      });
+
+      console.log(
+        "Login: Authentication successful, activating encryption keys"
+      );
+      // If login successful, try to activate encryption keys
+      const { activateUserKeys } = await import("../utils/keyManager");
+      const keyActivation = await activateUserKeys(data.email, data.passphrase);
+
+      console.log("Login: Key activation result", keyActivation);
+      if (!keyActivation.success) {
+        throw new Error(
+          `Login successful, but failed to activate encryption keys: ${keyActivation.message}`
+        );
+      }
+
+      return loginResponse;
+    },
     onSuccess: (response) => {
       // Store access token
       if (response.data.accessToken) {
@@ -106,7 +131,13 @@ export const useLogout = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => logoutUtil(),
+    mutationFn: async () => {
+      // Clear activated keys from memory
+      const { clearActivatedKeys } = await import("../utils/keyManager");
+      clearActivatedKeys();
+
+      return logoutUtil();
+    },
     onSuccess: () => {
       // Clear all queries
       queryClient.clear();
@@ -141,17 +172,25 @@ export const useAuth = () => {
       const currentTime = Date.now() / 1000;
 
       if (payload.exp && payload.exp > currentTime) {
+        // Check if token has required fields (name field was added later)
+        if (!payload.name) {
+          console.log("Token missing name field - clearing old token");
+          localStorage.removeItem("accessToken");
+          return { isAuthenticated: false, user: null };
+        }
+
         return {
           isAuthenticated: true,
           user: {
             id: payload.id,
             email: payload.email,
-            name: payload.name || null,
+            name: payload.name,
           },
         };
       }
     } catch (error) {
       console.error("Invalid token format:", error);
+      localStorage.removeItem("accessToken");
     }
 
     return { isAuthenticated: false, user: null };

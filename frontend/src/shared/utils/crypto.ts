@@ -60,6 +60,68 @@ export function bufferToHex(buf: ArrayBuffer): string {
 }
 
 /**
+ * Encrypt AES key with recipient's RSA public key for sharing
+ */
+export async function encryptKeyForRecipient(
+  aesKey: CryptoKey,
+  recipientPublicKeyB64: string
+): Promise<string> {
+  // Export AES key as raw bytes
+  const aesKeyBytes = await crypto.subtle.exportKey("raw", aesKey);
+
+  // Import recipient's public key
+  const publicKeyDer = base64ToBuffer(recipientPublicKeyB64);
+  const recipientPublicKey = await crypto.subtle.importKey(
+    "spki",
+    publicKeyDer,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    false,
+    ["encrypt"]
+  );
+
+  // Encrypt AES key with recipient's public key
+  const encryptedKey = await crypto.subtle.encrypt(
+    {
+      name: "RSA-OAEP",
+    },
+    recipientPublicKey,
+    aesKeyBytes
+  );
+
+  return bufferToBase64(encryptedKey);
+}
+
+/**
+ * Decrypt received AES key with own private key
+ */
+export async function decryptReceivedKey(
+  encryptedKeyB64: string,
+  privateKey: CryptoKey
+): Promise<CryptoKey> {
+  // Decrypt with private key
+  const encryptedKeyBytes = base64ToBuffer(encryptedKeyB64);
+  const decryptedKeyBytes = await crypto.subtle.decrypt(
+    {
+      name: "RSA-OAEP",
+    },
+    privateKey,
+    encryptedKeyBytes
+  );
+
+  // Import as AES key
+  return await crypto.subtle.importKey(
+    "raw",
+    decryptedKeyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+/**
  * 1. Generate RSA keypair for the user (for file sharing)
  * Uses RSA-OAEP with SHA-256 — good for wrapping AES keys.
  */
@@ -93,6 +155,25 @@ export async function exportPublicKeyToBase64(
 ): Promise<string> {
   const spki = await crypto.subtle.exportKey("spki", publicKey);
   return bufferToBase64(spki);
+}
+
+/**
+ * 2.5. Import public key from base64 string (SPKI format)
+ */
+export async function importPublicKeyFromBase64(
+  publicKeyBase64: string
+): Promise<CryptoKey> {
+  const spki = base64ToBuffer(publicKeyBase64);
+  return crypto.subtle.importKey(
+    "spki",
+    spki,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    true,
+    ["encrypt"]
+  );
 }
 
 /**

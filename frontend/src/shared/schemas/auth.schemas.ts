@@ -87,6 +87,9 @@ export const registrationSchema = z.object({
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, "Password is required"),
+  passphrase: z
+    .string()
+    .min(1, "Passphrase is required to activate encryption keys"),
 });
 
 // Email availability check schema

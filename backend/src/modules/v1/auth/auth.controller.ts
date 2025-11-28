@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { AuthService } from "./auth.services";
 import { asyncHandler } from "../../../middleware";
+import { prisma } from "../../../db/prismaClient";
+import { logger } from "../../../config";
 
 const registerSchema = z.object({
   name: z
@@ -52,39 +54,126 @@ export class AuthController {
   constructor(private service = new AuthService()) {}
 
   checkEmail = asyncHandler(async (req: Request, res: Response) => {
-    // Validate request body exists
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Request body is required",
-        errors: { body: ["Email is required"] },
-      });
-    }
+    const { email } = req.body;
 
-    // Validate input schema
-    const parsed = emailCheckSchema.safeParse(req.body);
-    if (!parsed.success) {
+    if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Validation failed",
-        errors: parsed.error.flatten().fieldErrors,
+        message: "Email is required",
       });
     }
 
     try {
-      const exists = await this.service.checkEmailExists(parsed.data.email);
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
       res.status(200).json({
         success: true,
-        message: "Email check completed",
+        message: existingUser ? "Email already taken" : "Email available",
         data: {
-          email: parsed.data.email,
-          exists: exists,
-          available: !exists,
+          email: email,
+          exists: !!existingUser,
+          available: !existingUser,
         },
       });
-    } catch (error: any) {
-      // Re-throw for global error handler
-      throw error;
+    } catch (error) {
+      logger.error("Check email error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to check email availability",
+      });
+    }
+  });
+
+  checkUserExists = asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          publicKey: true,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        exists: !!user,
+        hasKeys: !!user?.publicKey,
+        message: user
+          ? user.publicKey
+            ? "User found and ready to receive files"
+            : "User exists but hasn't set up encryption keys"
+          : "User not found",
+      });
+    } catch (error) {
+      logger.error("Check user exists error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to check user existence",
+      });
+    }
+  });
+
+  getUserPublicKey = asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          publicKey: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      if (!user.publicKey) {
+        return res.status(404).json({
+          success: false,
+          message: "User has not set up encryption keys",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          email: user.email,
+          name: user.name,
+          publicKey: user.publicKey,
+        },
+      });
+    } catch (error) {
+      logger.error("Get user public key error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get user public key",
+      });
     }
   });
 

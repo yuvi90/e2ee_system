@@ -41,6 +41,42 @@ export const isAuthenticated = (): boolean => {
   return false;
 };
 
+// Debug function to check if token has required fields
+export const debugCurrentToken = (): void => {
+  const accessToken = localStorage.getItem("accessToken");
+
+  if (!accessToken) {
+    console.log("❌ No access token found");
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(atob(accessToken.split(".")[1]));
+    console.log("🔍 Current JWT payload:", payload);
+
+    const currentTime = Date.now() / 1000;
+    const isExpired = payload.exp && payload.exp < currentTime;
+
+    console.log("⏰ Token expired:", isExpired);
+    console.log("👤 Has name field:", !!payload.name);
+    console.log("📧 Email:", payload.email);
+
+    if (!payload.name) {
+      console.log("❌ Token missing name field - clearing old token");
+      localStorage.removeItem("accessToken");
+      console.log("✅ Old token cleared. Please log in again.");
+      window.location.reload();
+    } else {
+      console.log("✅ Token is valid with name:", payload.name);
+    }
+  } catch (error) {
+    console.log("❌ Error decoding token:", error);
+    localStorage.removeItem("accessToken");
+    console.log("✅ Invalid token cleared. Please log in again.");
+    window.location.reload();
+  }
+};
+
 // Logout utility
 export const logout = async (): Promise<void> => {
   // Clear local storage first
